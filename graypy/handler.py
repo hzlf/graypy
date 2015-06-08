@@ -36,19 +36,21 @@ class GELFHandler(DatagramHandler):
         if true (the default).
     :param fqdn: Use fully qualified domain name of localhost as source 
         host (socket.getfqdn()).
-    :param localname: Use specified hostname as source host.
+    :param localname: Use specified hostname as source host.	
+    :param hostname: Use specified hostname as hostname field.
     :param facility: Replace facility with specified value. If specified,
         record.name will be passed as `logger` parameter.
     """
 
     def __init__(self, host, port=12201, chunk_size=WAN_CHUNK,
             debugging_fields=True, extra_fields=True, fqdn=False, 
-            localname=None, facility=None):
+            localname=None, hostname=None, facility=None):
         self.debugging_fields = debugging_fields
         self.extra_fields = extra_fields
         self.chunk_size = chunk_size
         self.fqdn = fqdn
         self.localname = localname
+        self.hostname = hostname
         self.facility = facility
         DatagramHandler.__init__(self, host, port)
 
@@ -62,7 +64,7 @@ class GELFHandler(DatagramHandler):
     def makePickle(self, record):
         message_dict = make_message_dict(
             record, self.debugging_fields, self.extra_fields, self.fqdn, 
-	    self.localname, self.facility)
+	    self.localname, self.hostname, self.facility)
         return zlib.compress(json.dumps(message_dict).encode('utf-8'))
 
 
@@ -91,7 +93,7 @@ class ChunkedGELF(object):
             yield self.encode(sequence, chunk)
 
 
-def make_message_dict(record, debugging_fields, extra_fields, fqdn, localname, facility=None):
+def make_message_dict(record, debugging_fields, extra_fields, fqdn, localname, hostname, facility=None):
     if fqdn:
         host = socket.getfqdn()
     elif localname:
@@ -99,7 +101,8 @@ def make_message_dict(record, debugging_fields, extra_fields, fqdn, localname, f
     else:
         host = socket.gethostname()
     fields = {'version': "1.0",
-        'host': host,
+	    'host': host,
+		'hostname': hostname,
         'short_message': record.getMessage(),
         'full_message': get_full_message(record.exc_info, record.getMessage()),
         'timestamp': record.created,
